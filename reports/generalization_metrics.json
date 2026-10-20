@@ -1,0 +1,71 @@
+{
+  "dataset": {
+    "source": "data\\raw\\PhiUSIIL_Phishing_URL_Dataset.csv",
+    "original_rows": 235795,
+    "usable_rows": 235370,
+    "duplicate_urls_removed": 425,
+    "malformed_url_candidates": 0,
+    "class_counts": {
+      "0": 100520,
+      "1": 134850
+    }
+  },
+  "method": "GroupShuffleSplit by registrable domain",
+  "random_state": 42,
+  "train_rows": 191335,
+  "test_rows": 44035,
+  "train_domains": 140407,
+  "test_domains": 35102,
+  "overlap_domains": 0,
+  "test_domains_absent_from_training_pct": 100.0,
+  "train_class_counts": {
+    "0": 83433,
+    "1": 107902
+  },
+  "test_class_counts": {
+    "0": 17087,
+    "1": 26948
+  },
+  "models": {
+    "logistic_regression": {
+      "accuracy": 0.9942091518110594,
+      "precision": 0.9994658753709199,
+      "recall": 0.9856030900684731,
+      "f1": 0.9924860771429413,
+      "roc_auc": 0.9959697518099253,
+      "confusion_matrix": [
+        [
+          16841,
+          246
+        ],
+        [
+          9,
+          26939
+        ]
+      ],
+      "false_positive_rate": 0.0003339765474246697,
+      "false_negative_rate": 0.014396909931526891
+    },
+    "random_forest": {
+      "accuracy": 0.9950266833200863,
+      "precision": 0.9969361300966297,
+      "recall": 0.990226487973313,
+      "f1": 0.9935699815026865,
+      "roc_auc": 0.9968942166059004,
+      "confusion_matrix": [
+        [
+          16920,
+          167
+        ],
+        [
+          52,
+          26896
+        ]
+      ],
+      "false_positive_rate": 0.001929642274009203,
+      "false_negative_rate": 0.009773512026686955
+    }
+  },
+  "registrable_domain_method": "tldextract Public Suffix List when installed; conservative fallback otherwise",
+  "experiment_timestamp": "2026-10-20T11:05:39.310586+00:00"
+}

@@ -1,0 +1,1 @@
+"""AI BrowserGuard application package."""
