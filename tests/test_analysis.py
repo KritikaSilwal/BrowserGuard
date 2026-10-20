@@ -3,6 +3,8 @@ import pandas as pd
 import pytest
 from unittest.mock import Mock
 from sklearn.linear_model import LogisticRegression
+from streamlit.errors import StreamlitSecretNotFoundError
+from huggingface_hub.errors import HfHubHTTPError
 
 from src.explain import explain_linear_prediction
 from src.feature_extraction import FEATURE_NAMES, extract_url_features, features_to_frame
@@ -138,3 +140,37 @@ def test_huggingface_token_falls_back_to_environment(monkeypatch):
     monkeypatch.setenv("HF_TOKEN", "environment-token")
 
     assert prediction_module._configured_hf_token() == "environment-token"
+
+
+def test_missing_streamlit_secrets_falls_back_without_hiding_expected_error(monkeypatch):
+    class MissingSecrets:
+        def __getitem__(self, key):
+            raise StreamlitSecretNotFoundError("secrets file is unavailable")
+
+    monkeypatch.setattr(prediction_module.st, "secrets", MissingSecrets())
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+
+    assert prediction_module._configured_hf_token() is None
+
+
+def test_huggingface_http_failure_logs_only_sanitized_metadata(monkeypatch, caplog):
+    monkeypatch.setattr(prediction_module.st, "secrets", {"HF_TOKEN": "never-log-this"})
+    response = Mock(status_code=401)
+    failure = HfHubHTTPError("private failure", response=response)
+    monkeypatch.setattr(prediction_module, "hf_hub_download", Mock(side_effect=failure))
+
+    with caplog.at_level("WARNING", logger=prediction_module.LOGGER.name):
+        with pytest.raises(RuntimeError, match="HTTP 401"):
+            prediction_module._download_model_from_huggingface()
+
+    message = caplog.text
+    assert "Hugging Face model download failed" in message
+    assert "HfHubHTTPError" in message
+    assert "401" in message
+    assert "never-log-this" not in message
+    assert "private failure" not in message
+
+
+def test_huggingface_repository_constants_match_uploaded_model():
+    assert prediction_module.HF_REPOSITORY == "kritika2005/browserguard-model"
+    assert prediction_module.HF_MODEL_FILENAME == "url_model.joblib"

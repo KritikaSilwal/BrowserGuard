@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -11,23 +12,46 @@ import numpy as np
 import streamlit as st
 from huggingface_hub import hf_hub_download
 from huggingface_hub.errors import HfHubHTTPError
+from streamlit.errors import StreamlitSecretNotFoundError
 
 from .feature_extraction import extract_url_features, features_to_frame, parse_url
 
 HF_REPOSITORY = "kritika2005/browserguard-model"
 HF_MODEL_FILENAME = "url_model.joblib"
+LOGGER = logging.getLogger(__name__)
 
 
 def _configured_hf_token() -> str | None:
     """Read the private Hub token without exposing it in errors or logs."""
+    secret_key_exists = False
     try:
         token = st.secrets["HF_TOKEN"]
-    except (KeyError, FileNotFoundError):
+        secret_key_exists = True
+    except (KeyError, FileNotFoundError, StreamlitSecretNotFoundError):
         token = os.environ.get("HF_TOKEN")
     if token is None:
+        LOGGER.info(
+            "Hugging Face token configuration: secrets_key_exists=%s "
+            "non_empty_token=%s",
+            secret_key_exists,
+            False,
+        )
         return None
     token = str(token).strip()
-    return token or None
+    resolved_token = token or None
+    LOGGER.info(
+        "Hugging Face token configuration: secrets_key_exists=%s "
+        "non_empty_token=%s",
+        secret_key_exists,
+        resolved_token is not None,
+    )
+    return resolved_token
+
+
+def _http_status_code(exception: BaseException) -> int | None:
+    response = getattr(exception, "response", None)
+    status_code = getattr(response, "status_code", None)
+    return status_code if isinstance(status_code, int) else None
 
 
 def _download_model_from_huggingface() -> Path:
@@ -39,6 +63,29 @@ def _download_model_from_huggingface() -> Path:
             token=token,
         )
     except HfHubHTTPError as exc:
+        status_code = _http_status_code(exc)
+        LOGGER.warning(
+            "Hugging Face model download failed: exception_class=%s "
+            "http_status=%s non_empty_token=%s",
+            type(exc).__name__,
+            status_code if status_code is not None else "unavailable",
+            token is not None,
+        )
+        if status_code == 401:
+            raise RuntimeError(
+                "Hugging Face rejected the configured token (HTTP 401). "
+                "Check that HF_TOKEN is valid and has read access."
+            ) from exc
+        if status_code == 403:
+            raise RuntimeError(
+                "Hugging Face denied access to the model (HTTP 403). "
+                "Grant the token read access to the private repository."
+            ) from exc
+        if status_code == 404:
+            raise RuntimeError(
+                "The Hugging Face model repository or file was not found (HTTP 404). "
+                f"Verify {HF_REPOSITORY}/{HF_MODEL_FILENAME}."
+            ) from exc
         if token is None:
             raise RuntimeError(
                 "The local model is unavailable and the Hugging Face repository is private. "
@@ -50,6 +97,13 @@ def _download_model_from_huggingface() -> Path:
             "Check that HF_TOKEN has read access to the model repository."
         ) from exc
     except OSError as exc:
+        LOGGER.warning(
+            "Hugging Face model download failed: exception_class=%s "
+            "http_status=%s non_empty_token=%s",
+            type(exc).__name__,
+            "unavailable",
+            token is not None,
+        )
         raise RuntimeError(
             "The BrowserGuard model could not be downloaded from Hugging Face. "
             "Check network access and the HF_TOKEN configuration."
