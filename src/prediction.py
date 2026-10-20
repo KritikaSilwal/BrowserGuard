@@ -73,8 +73,9 @@ def _download_model_from_huggingface() -> Path:
         )
         if status_code == 401:
             raise RuntimeError(
-                "Hugging Face rejected the configured token (HTTP 401). "
-                "Check that HF_TOKEN is valid and has read access."
+                "Hugging Face returned HTTP 401 for the model download. "
+                "If the repository is intended to be public, change its visibility in "
+                "Hugging Face settings; otherwise configure a read-enabled HF_TOKEN."
             ) from exc
         if status_code == 403:
             raise RuntimeError(
@@ -86,15 +87,10 @@ def _download_model_from_huggingface() -> Path:
                 "The Hugging Face model repository or file was not found (HTTP 404). "
                 f"Verify {HF_REPOSITORY}/{HF_MODEL_FILENAME}."
             ) from exc
-        if token is None:
-            raise RuntimeError(
-                "The local model is unavailable and the Hugging Face repository is private. "
-                "Configure st.secrets['HF_TOKEN'] in Streamlit Cloud or set the HF_TOKEN "
-                "environment variable for local use."
-            ) from exc
         raise RuntimeError(
-            "The BrowserGuard model could not be downloaded from Hugging Face. "
-            "Check that HF_TOKEN has read access to the model repository."
+            "The BrowserGuard model could not be downloaded from Hugging Face "
+            f"(HTTP {status_code if status_code is not None else 'unknown'}). "
+            "Check repository visibility, network access, and optional HF_TOKEN permissions."
         ) from exc
     except OSError as exc:
         LOGGER.warning(
@@ -106,7 +102,7 @@ def _download_model_from_huggingface() -> Path:
         )
         raise RuntimeError(
             "The BrowserGuard model could not be downloaded from Hugging Face. "
-            "Check network access and the HF_TOKEN configuration."
+            "Check network access and the optional HF_TOKEN configuration."
         ) from exc
     return Path(downloaded_path)
 

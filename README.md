@@ -43,11 +43,13 @@ The application uses `models\url_model.joblib` when that local artifact is
 present. If it is absent, `src\prediction.py` downloads the model from the
 private Hugging Face repository `kritika2005/browserguard-model` through
 `huggingface_hub`. Hugging Face's local cache prevents repeated downloads.
+For anonymous downloads, the repository must be Public in Hugging Face
+settings; this application does not change repository visibility.
 
-For Streamlit Community Cloud, add a secret named `HF_TOKEN` with a
-read-enabled token for that repository in the app's settings. For local
-fallback testing, set the `HF_TOKEN` environment variable instead. Never
-commit the token or place it in source code.
+Public downloads do not require a token. If the repository remains private,
+add a secret named `HF_TOKEN` with a read-enabled token in Streamlit Cloud,
+or set `HF_TOKEN` for local fallback testing. Never commit the token or place
+it in source code.
 
 The runtime reads metrics from the `metrics` field inside the Joblib bundle;
 the separately generated `url_model.metrics.json` is a training-side report

@@ -174,3 +174,32 @@ def test_huggingface_http_failure_logs_only_sanitized_metadata(monkeypatch, capl
 def test_huggingface_repository_constants_match_uploaded_model():
     assert prediction_module.HF_REPOSITORY == "kritika2005/browserguard-model"
     assert prediction_module.HF_MODEL_FILENAME == "url_model.joblib"
+
+
+def test_public_huggingface_fallback_does_not_require_token(monkeypatch, tmp_path):
+    monkeypatch.setattr(prediction_module.st, "secrets", {})
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    downloaded_model = tmp_path / "cached-model.joblib"
+    downloaded_model.write_bytes(b"cached")
+    downloader = Mock(return_value=str(downloaded_model))
+    monkeypatch.setattr(prediction_module, "hf_hub_download", downloader)
+
+    result = prediction_module._download_model_from_huggingface()
+
+    assert result == downloaded_model
+    downloader.assert_called_once_with(
+        repo_id="kritika2005/browserguard-model",
+        filename="url_model.joblib",
+        token=None,
+    )
+
+
+def test_huggingface_unauthorized_error_does_not_claim_token_is_missing(monkeypatch):
+    monkeypatch.setattr(prediction_module.st, "secrets", {})
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    response = Mock(status_code=401)
+    failure = HfHubHTTPError("unauthorized", response=response)
+    monkeypatch.setattr(prediction_module, "hf_hub_download", Mock(side_effect=failure))
+
+    with pytest.raises(RuntimeError, match="repository is intended to be public"):
+        prediction_module._download_model_from_huggingface()
