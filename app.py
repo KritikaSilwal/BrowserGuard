@@ -99,7 +99,6 @@ st.markdown(
         display: none;
     }
     [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] > div:last-child,
-    [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] > div:last-child *,
     [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] > div:last-child p {
         color: #F3F7FC !important;
         font-size: 0.96rem;
@@ -114,7 +113,6 @@ st.markdown(
         font-weight: 600;
     }
     [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) > div:last-child,
-    [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) > div:last-child *,
     [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) > div:last-child p {
         color: #FFFFFF !important;
         font-weight: 600;
